@@ -57,6 +57,10 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                toggleHabit(entry.habit)
+            }
 
         case .add:
             VStack(spacing: 16) {
@@ -73,15 +77,40 @@ struct ContentView: View {
     }
 
     private func refreshPages() {
+        refreshPages(selecting: nil)
+    }
+
+    private func refreshPages(selecting habitID: UUID?) {
         let service = HabitService(modelContext: modelContext)
         do {
             pages = try service.pagerPages()
+            if let habitID,
+               let nextSelection = pages.firstIndex(where: {
+                   if case let .habit(entry) = $0 {
+                       return entry.habit.id == habitID
+                   }
+                   return false
+               }) {
+                selection = nextSelection
+                return
+            }
+
             if selection >= pages.count {
                 selection = max(pages.count - 1, 0)
             }
         } catch {
             pages = [.add]
             selection = 0
+        }
+    }
+
+    private func toggleHabit(_ habit: Habit) {
+        do {
+            let service = HabitService(modelContext: modelContext)
+            try service.toggleCompletion(for: habit)
+            refreshPages(selecting: habit.id)
+        } catch {
+            refreshPages(selecting: habit.id)
         }
     }
 }

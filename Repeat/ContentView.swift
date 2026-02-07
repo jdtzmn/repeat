@@ -73,6 +73,10 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                createHabitFromPlusPage()
+            }
         }
     }
 
@@ -111,6 +115,16 @@ struct ContentView: View {
             refreshPages(selecting: habit.id)
         } catch {
             refreshPages(selecting: habit.id)
+        }
+    }
+
+    private func createHabitFromPlusPage() {
+        do {
+            let service = HabitService(modelContext: modelContext)
+            let habit = try service.createHabit(name: "New Habit")
+            refreshPages(selecting: habit.id)
+        } catch {
+            refreshPages()
         }
     }
 }

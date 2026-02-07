@@ -10,6 +10,12 @@ import SwiftData
 import Inject
 
 struct ContentView: View {
+    private enum SelectionMode {
+        case keepCurrent
+        case specificHabit(UUID)
+        case initial
+    }
+
     @ObserveInjection var inject
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Habit.sortOrder) private var habits: [Habit]
@@ -27,7 +33,7 @@ struct ContentView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .task {
-            refreshPages()
+            refreshPages(selectionMode: .initial)
         }
         .onChange(of: habits.count) { _, _ in
             refreshPages()
@@ -81,26 +87,34 @@ struct ContentView: View {
     }
 
     private func refreshPages() {
-        refreshPages(selecting: nil)
+        refreshPages(selectionMode: .keepCurrent)
     }
 
-    private func refreshPages(selecting habitID: UUID?) {
+    private func refreshPages(selectionMode: SelectionMode) {
         let service = HabitService(modelContext: modelContext)
         do {
             pages = try service.pagerPages()
-            if let habitID,
-               let nextSelection = pages.firstIndex(where: {
-                   if case let .habit(entry) = $0 {
-                       return entry.habit.id == habitID
-                   }
-                   return false
-               }) {
-                selection = nextSelection
-                return
-            }
 
-            if selection >= pages.count {
-                selection = max(pages.count - 1, 0)
+            switch selectionMode {
+            case let .specificHabit(habitID):
+                if let nextSelection = pages.firstIndex(where: {
+                    if case let .habit(entry) = $0 {
+                        return entry.habit.id == habitID
+                    }
+                    return false
+                }) {
+                    selection = nextSelection
+                } else {
+                    selection = service.initialPageIndex(for: pages)
+                }
+
+            case .initial:
+                selection = service.initialPageIndex(for: pages)
+
+            case .keepCurrent:
+                if selection >= pages.count {
+                    selection = max(pages.count - 1, 0)
+                }
             }
         } catch {
             pages = [.add]
@@ -112,9 +126,9 @@ struct ContentView: View {
         do {
             let service = HabitService(modelContext: modelContext)
             try service.toggleCompletion(for: habit)
-            refreshPages(selecting: habit.id)
+            refreshPages(selectionMode: .specificHabit(habit.id))
         } catch {
-            refreshPages(selecting: habit.id)
+            refreshPages(selectionMode: .specificHabit(habit.id))
         }
     }
 
@@ -122,7 +136,7 @@ struct ContentView: View {
         do {
             let service = HabitService(modelContext: modelContext)
             let habit = try service.createHabit(name: "New Habit")
-            refreshPages(selecting: habit.id)
+            refreshPages(selectionMode: .specificHabit(habit.id))
         } catch {
             refreshPages()
         }

@@ -23,6 +23,8 @@ struct ContentView: View {
 
     @State private var pages: [HabitPagerPage] = [.add]
     @State private var selection = 0
+    @State private var pendingFocusHabitID: UUID?
+    @FocusState private var focusedHabitID: UUID?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -41,6 +43,9 @@ struct ContentView: View {
         .onChange(of: completions.count) { _, _ in
             refreshPages()
         }
+        .onChange(of: selection) { _, _ in
+            focusPendingHabitIfNeeded()
+        }
         .enableInjection()
     }
 
@@ -54,9 +59,17 @@ struct ContentView: View {
                         .font(.system(size: 72))
                 }
 
-                Text(entry.habit.name)
-                    .font(.largeTitle.weight(.semibold))
-                    .multilineTextAlignment(.center)
+                TextField(
+                    "New Habit",
+                    text: Binding(
+                        get: { entry.habit.name },
+                        set: { entry.habit.name = $0 }
+                    )
+                )
+                .textFieldStyle(.plain)
+                .font(.largeTitle.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .focused($focusedHabitID, equals: entry.habit.id)
 
                 Text(entry.isCompleted ? "Completed today" : "Not completed yet")
                     .foregroundStyle(.secondary)
@@ -137,8 +150,25 @@ struct ContentView: View {
             let service = HabitService(modelContext: modelContext)
             let habit = try service.createHabit(name: "New Habit")
             refreshPages(selectionMode: .specificHabit(habit.id))
+            pendingFocusHabitID = habit.id
+            focusPendingHabitIfNeeded()
         } catch {
             refreshPages()
+        }
+    }
+
+    private func focusPendingHabitIfNeeded() {
+        guard let pendingFocusHabitID else {
+            return
+        }
+
+        guard pages.indices.contains(selection) else {
+            return
+        }
+
+        if case let .habit(entry) = pages[selection], entry.habit.id == pendingFocusHabitID {
+            focusedHabitID = pendingFocusHabitID
+            self.pendingFocusHabitID = nil
         }
     }
 }

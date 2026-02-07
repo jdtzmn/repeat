@@ -1,6 +1,16 @@
 import Foundation
 import SwiftData
 
+struct HabitPageEntry {
+    let habit: Habit
+    let isCompleted: Bool
+}
+
+enum HabitPagerPage {
+    case habit(HabitPageEntry)
+    case add
+}
+
 struct HabitService {
     let modelContext: ModelContext
 
@@ -44,6 +54,43 @@ struct HabitService {
         modelContext.insert(HabitCompletion(habitID: habit.id, dayStart: dayStart))
         try modelContext.save()
         return true
+    }
+
+    func pagerPages(for dayStart: Date = DayService.todayStart()) throws -> [HabitPagerPage] {
+        let habits = try activeHabits()
+        let completionSet = Set(try completions(on: dayStart).map(\.habitID))
+
+        let completedPages = habits
+            .filter { completionSet.contains($0.id) }
+            .map { HabitPagerPage.habit(HabitPageEntry(habit: $0, isCompleted: true)) }
+
+        let incompletePages = habits
+            .filter { !completionSet.contains($0.id) }
+            .map { HabitPagerPage.habit(HabitPageEntry(habit: $0, isCompleted: false)) }
+
+        return completedPages + incompletePages + [.add]
+    }
+
+    func initialPageIndex(for pages: [HabitPagerPage]) -> Int {
+        if let firstIncompleteIndex = pages.firstIndex(where: {
+            if case let .habit(entry) = $0 {
+                return !entry.isCompleted
+            }
+            return false
+        }) {
+            return firstIncompleteIndex
+        }
+
+        if let firstCompletedIndex = pages.firstIndex(where: {
+            if case let .habit(entry) = $0 {
+                return entry.isCompleted
+            }
+            return false
+        }) {
+            return firstCompletedIndex
+        }
+
+        return max(pages.count - 1, 0)
     }
 
     private func nextSortOrder() throws -> Int {

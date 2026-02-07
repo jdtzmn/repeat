@@ -1,0 +1,19 @@
+{
+  "mcp": {
+    "XcodeBuildMCP": {
+      "type": "local",
+      "command": ["npx", "-y", "xcodebuildmcp@latest"],
+      "enabled": true
+    },
+    "swiftlens": {
+      "type": "local",
+      "command": ["uvx", "swiftlens"],
+      "enabled": true
+    },
+    "ios-simulator": {
+      "type": "local",
+      "command": ["npx", "-y", "ios-simulator-mcp"],
+      "enabled": true
+    }
+  }
+}

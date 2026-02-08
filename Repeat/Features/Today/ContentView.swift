@@ -155,29 +155,25 @@ struct ContentView: View {
             return
         }
 
-        let service = HabitService(modelContext: modelContext)
-        let toggleSucceeded: Bool
-        do {
-            try service.toggleCompletion(for: entry.habit)
-            toggleSucceeded = true
-        } catch {
-            toggleSucceeded = false
+        if let nextIncompleteTarget {
+            withAnimation(.easeInOut(duration: pageAdvanceDuration)) {
+                selection = nextIncompleteTarget.index
+            }
+
+            if await sleep(seconds: pageAdvanceDuration + 0.08) {
+                return
+            }
         }
 
-        if toggleSucceeded {
+        let service = HabitService(modelContext: modelContext)
+        do {
+            try service.toggleCompletion(for: entry.habit)
             completionHaptics.triggerSettledFeedback()
-
-            if let nextIncompleteTarget {
-                withAnimation(.easeInOut(duration: pageAdvanceDuration)) {
-                    selection = nextIncompleteTarget.index
-                }
-
-                if await sleep(seconds: pageAdvanceDuration + 0.08) {
-                    return
-                }
-            }
             refreshPages(selectionMode: .keepCurrent)
-        } else {
+        } catch {
+            withAnimation(.easeInOut(duration: completionAnimationDuration * 0.7)) {
+                completionProgressOverrides[habitID] = currentProgress
+            }
             refreshPages(selectionMode: .specificHabit(habitID))
         }
     }

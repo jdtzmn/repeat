@@ -143,6 +143,7 @@ struct ContentView: View {
         let targetProgress: CGFloat = currentProgress >= 0.5 ? 0 : 1
         let isCompleting = targetProgress > currentProgress
         let nextIncompleteTarget = isCompleting ? nextIncompleteTarget(excluding: habitID) : nil
+        let originalSelection = selection
 
         isCompletionAnimationInFlight = true
         completionProgressOverrides[habitID] = currentProgress
@@ -155,10 +156,14 @@ struct ContentView: View {
             return
         }
 
+        var didAutoAdvance = false
+
         if let nextIncompleteTarget {
+            completionHaptics.triggerSettledFeedback()
             withAnimation(.easeInOut(duration: pageAdvanceDuration)) {
                 selection = nextIncompleteTarget.index
             }
+            didAutoAdvance = true
 
             if await sleep(seconds: pageAdvanceDuration + 0.08) {
                 return
@@ -168,14 +173,23 @@ struct ContentView: View {
         let service = HabitService(modelContext: modelContext)
         do {
             try service.toggleCompletion(for: entry.habit)
-            completionHaptics.triggerSettledFeedback()
-            refreshPages(selectionMode: .keepCurrent)
+            if !didAutoAdvance {
+                completionHaptics.triggerSettledFeedback()
+            }
         } catch {
             withAnimation(.easeInOut(duration: completionAnimationDuration * 0.7)) {
                 completionProgressOverrides[habitID] = currentProgress
             }
+            if didAutoAdvance {
+                withAnimation(.easeInOut(duration: pageAdvanceDuration * 0.85)) {
+                    selection = originalSelection
+                }
+            }
             refreshPages(selectionMode: .specificHabit(habitID))
+            return
         }
+
+        refreshPages(selectionMode: .keepCurrent)
     }
 
     @MainActor

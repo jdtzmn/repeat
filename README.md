@@ -52,7 +52,7 @@ Each row is a day, and the filled portion shows completion percentage:
 - `make lint` runs SwiftLint.
 - `make lint-format` runs SwiftFormat in lint mode.
 - `make format` applies SwiftFormat fixes.
-- `make test` runs the test suite with `xcodebuild`.
+- `make test` runs the test suite with `xcodebuild` using destination `platform=iOS Simulator,OS=26.2,name=iPhone 17 Pro`.
 
 ## Tech stack
 

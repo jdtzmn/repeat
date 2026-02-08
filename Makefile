@@ -1,4 +1,4 @@
-DESTINATION ?= platform=iOS Simulator,name=iPhone 17 Pro
+DESTINATION ?= platform=iOS Simulator,OS=26.2,name=iPhone 17 Pro
 
 lint:
 	mint run swiftlint

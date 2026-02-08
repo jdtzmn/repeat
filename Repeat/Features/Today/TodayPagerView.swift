@@ -1,7 +1,9 @@
 import Foundation
+import Inject
 import SwiftUI
 
 struct TodayPagerView: View {
+    @ObserveInjection var inject
     let pages: [HabitPagerPage]
     @Binding var selection: Int
     @FocusState.Binding var focusedHabitID: UUID?
@@ -20,6 +22,7 @@ struct TodayPagerView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(.easeInOut(duration: 0.55), value: selection)
+        .enableInjection()
     }
 
     @ViewBuilder

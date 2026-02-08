@@ -1,8 +1,10 @@
+import Inject
 import Reorderable
 import SwiftData
 import SwiftUI
 
 struct ManageHabitsPage: View {
+    @ObserveInjection var inject
     @Environment(\.modelContext) private var modelContext
     @Query(
         filter: #Predicate<Habit> { !$0.isArchived },
@@ -69,6 +71,7 @@ struct ManageHabitsPage: View {
         } message: {
             Text("This habit will be removed from your daily list. Past completion data is kept.")
         }
+        .enableInjection()
     }
 
     private func swipeableRow(habit: Habit, isDragged: Bool) -> some View {

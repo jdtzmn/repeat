@@ -1,20 +1,19 @@
-import Foundation
+import Inject
 import SwiftData
 import SwiftUI
 
 struct HistoryView: View {
+    @ObserveInjection var inject
     @Query private var summaries: [DaySummary]
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 10) {
+        LazyVStack(spacing: 0) {
             ForEach(sortedSummaries, id: \.dayStart) { summary in
                 historyRow(for: summary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 24)
+        .frame(maxWidth: .infinity, alignment: .top)
+        .enableInjection()
     }
 
     private var sortedSummaries: [DaySummary] {
@@ -26,28 +25,14 @@ struct HistoryView: View {
             ? CGFloat(summary.completedHabitCount) / CGFloat(summary.eligibleHabitCount)
             : 0
 
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(summary.dayStart, format: .dateTime.weekday(.abbreviated).month().day())
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Text("\(summary.completedHabitCount)/\(summary.eligibleHabitCount)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+        return Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(maxWidth: .infinity)
+                    .scaleEffect(x: max(0.001, ratio), y: 1, anchor: .leading)
             }
-
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-                .overlay(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.accentColor)
-                        .frame(maxWidth: .infinity)
-                        .scaleEffect(x: max(0.001, ratio), y: 1, anchor: .leading)
-                }
-                .frame(height: 20)
+            .frame(height: 14)
         }
-    }
 }

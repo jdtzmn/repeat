@@ -34,6 +34,7 @@ struct ContentView: View {
     @State private var pages: [HabitPagerPage] = [.add]
     @State private var selection = 0
     @State private var verticalPage: VerticalPage? = .today
+    @State private var didSetInitialVerticalPage = false
     @State private var pendingFocusHabitID: UUID?
     @State private var completionProgressOverrides: [UUID: CGFloat] = [:]
     @State private var isCompletionAnimationInFlight = false
@@ -45,23 +46,35 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let pageHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
-                    ManageHabitsPage()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    managePage(geometry: geometry, pageHeight: pageHeight)
                         .id(VerticalPage.manage)
 
-                    todayPage(geometry: geometry)
+                    todayPage(geometry: geometry, pageHeight: pageHeight)
                         .id(VerticalPage.today)
 
-                    historyPage(geometry: geometry)
+                    historyPage(geometry: geometry, pageHeight: pageHeight)
                         .id(VerticalPage.history)
                 }
+                .scrollTargetLayout()
             }
+            .background(Color(.systemBackground))
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $verticalPage)
-            .defaultScrollAnchor(.center)
+            .defaultScrollAnchor(.top)
+            .onAppear {
+                guard !didSetInitialVerticalPage else {
+                    return
+                }
+                didSetInitialVerticalPage = true
+                DispatchQueue.main.async {
+                    verticalPage = .today
+                }
+            }
         }
+        .ignoresSafeArea(.container, edges: .vertical)
         .task {
             ensureHabitEmojis()
             refreshPages(selectionMode: .initial)
@@ -107,27 +120,50 @@ struct ContentView: View {
         .enableInjection()
     }
 
-    private func todayPage(geometry: GeometryProxy) -> some View {
-        TodayPagerView(
-            pages: pages,
-            selection: $selection,
-            focusedHabitID: $focusedHabitID,
-            progressForHabit: progress(for:),
-            isAnimatingCompletionForHabit: isAnimatingCompletion(for:),
-            onHabitSingleTap: endEditing,
-            onHabitDoubleTap: toggleHabit,
-            onAddDoubleTap: createHabitFromPlusPage
-        )
-        .id(todayPagerReloadToken)
-        .frame(width: geometry.size.width, height: geometry.size.height)
+    private func managePage(geometry: GeometryProxy, pageHeight: CGFloat) -> some View {
+        ZStack {
+            Color(.systemBackground)
+
+            ManageHabitsPage()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .frame(width: geometry.size.width, height: pageHeight)
+        .clipped()
     }
 
-    private func historyPage(geometry: GeometryProxy) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            HistoryView()
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+    private func todayPage(geometry: GeometryProxy, pageHeight: CGFloat) -> some View {
+        ZStack {
+            Color(.systemBackground)
+
+            TodayPagerView(
+                pages: pages,
+                selection: $selection,
+                focusedHabitID: $focusedHabitID,
+                progressForHabit: progress(for:),
+                isAnimatingCompletionForHabit: isAnimatingCompletion(for:),
+                onHabitSingleTap: endEditing,
+                onHabitDoubleTap: toggleHabit,
+                onAddDoubleTap: createHabitFromPlusPage
+            )
+            .id(todayPagerReloadToken)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: geometry.size.width, height: geometry.size.height)
+        .frame(width: geometry.size.width, height: pageHeight)
+        .background(Color(.systemBackground))
+        .clipped()
+    }
+
+    private func historyPage(geometry: GeometryProxy, pageHeight: CGFloat) -> some View {
+        ZStack {
+            Color(.systemBackground)
+
+            ScrollView(.vertical, showsIndicators: false) {
+                HistoryView()
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+        .frame(width: geometry.size.width, height: pageHeight)
+        .clipped()
     }
 
     private func refreshPages() {

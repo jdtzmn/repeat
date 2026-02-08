@@ -1,8 +1,10 @@
 import ElegantEmojiPicker
 import Foundation
+import Inject
 import SwiftUI
 
 struct HabitPageView: View {
+    @ObserveInjection var inject
     let entry: HabitPageEntry
     let completionProgress: CGFloat
     let shouldAnimateCompletion: Bool
@@ -50,9 +52,9 @@ struct HabitPageView: View {
                     habitID: entry.habit.id
                 )
             }
+            .padding(24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
         .clipped()
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
@@ -69,6 +71,7 @@ struct HabitPageView: View {
             }
             entry.habit.emoji = Habit.normalizedEmoji(emojiValue)
         }
+        .enableInjection()
     }
 }
 
@@ -78,22 +81,32 @@ private struct AnimatedStrikethroughTextField: View {
     let shouldAnimateCompletion: Bool
     @FocusState.Binding var focusedHabitID: UUID?
     let habitID: UUID
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         TextField("New Habit", text: $text)
             .textFieldStyle(.plain)
             .font(.largeTitle.weight(.semibold))
+            .foregroundStyle(textColor(for: completionProgress))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: true, vertical: false)
             .focused($focusedHabitID, equals: habitID)
             .overlay {
                 Rectangle()
-                    .fill(Color.primary.opacity(0.6))
+                    .fill(Color.white)
                     .frame(height: 2)
                     .scaleEffect(x: max(0.001, completionProgress), y: 1, anchor: .leading)
                     .animation(shouldAnimateCompletion ? .easeInOut(duration: 0.48) : nil, value: completionProgress)
             }
     }
+
+    private func textColor(for progress: CGFloat) -> Color {
+        let clampedProgress = min(max(progress, 0), 1)
+        let startValue: CGFloat = colorScheme == .dark ? 1 : 0
+        let blendedValue = startValue + (1 - startValue) * clampedProgress
+        return Color(red: blendedValue, green: blendedValue, blue: blendedValue)
+    }
+
 }
 
 private struct CompletionPageBackground: View {
@@ -104,12 +117,13 @@ private struct CompletionPageBackground: View {
         GeometryReader { geometry in
             let diameter = max(geometry.size.width, geometry.size.height) * 2.4
             Circle()
-                .fill(Color.accentColor.opacity(0.22))
+                .fill(Color.accentColor.opacity(1.0))
                 .frame(width: diameter, height: diameter)
                 .scaleEffect(max(0.001, progress))
                 .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 .animation(shouldAnimateCompletion ? .easeInOut(duration: 0.48) : nil, value: progress)
         }
+        .ignoresSafeArea(.container, edges: .vertical)
         .allowsHitTesting(false)
     }
 }

@@ -31,3 +31,20 @@ That opens a subshell in `.port/trees/feature-habit-visualization`.
    - `make lint`
    - `make lint-format`
    - `make test`
+
+## Beads workflow
+
+Use `bd` as the task tracker for this repository.
+
+- Check available tasks: `bd ready`
+- View all tasks: `bd list --limit 20`
+- Create a task: `bd create --title "..." --type task --priority 1`
+- Claim/start a task: `bd update <id> --claim`
+- Update status/notes: `bd update <id> --notes "..."`
+- Close completed work: `bd close <id> --reason "..."`
+
+Important:
+
+- Do not use `bd edit` (interactive editor).
+- Prefer `bd update` flags for non-interactive updates.
+- Run `bd sync` after making multiple issue changes to flush JSONL/git state.

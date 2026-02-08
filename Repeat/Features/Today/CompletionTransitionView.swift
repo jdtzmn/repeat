@@ -3,6 +3,7 @@ import SwiftUI
 struct CompletionTransitionView: View {
     let emoji: String
     let completionProgress: CGFloat
+    let shouldAnimateCompletion: Bool
 
     var body: some View {
         ZStack {
@@ -17,6 +18,6 @@ struct CompletionTransitionView: View {
                 .scaleEffect(max(0.001, completionProgress))
                 .opacity(completionProgress)
         }
-        .animation(.easeInOut(duration: 0.24), value: completionProgress)
+        .animation(shouldAnimateCompletion ? .easeInOut(duration: 0.48) : nil, value: completionProgress)
     }
 }

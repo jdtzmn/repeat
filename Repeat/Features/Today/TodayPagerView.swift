@@ -6,7 +6,7 @@ struct TodayPagerView: View {
     @Binding var selection: Int
     @FocusState.Binding var focusedHabitID: UUID?
     let progressForHabit: (HabitPageEntry) -> CGFloat
-    let strikethroughDirectionForHabit: (HabitPageEntry) -> StrikethroughDirection
+    let isAnimatingCompletionForHabit: (HabitPageEntry) -> Bool
     let onHabitSingleTap: () -> Void
     let onHabitDoubleTap: (HabitPageEntry) -> Void
     let onAddDoubleTap: () -> Void
@@ -19,6 +19,7 @@ struct TodayPagerView: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .animation(.easeInOut(duration: 0.55), value: selection)
     }
 
     @ViewBuilder
@@ -28,7 +29,7 @@ struct TodayPagerView: View {
             HabitPageView(
                 entry: entry,
                 completionProgress: progressForHabit(entry),
-                strikethroughDirection: strikethroughDirectionForHabit(entry),
+                shouldAnimateCompletion: isAnimatingCompletionForHabit(entry),
                 focusedHabitID: $focusedHabitID,
                 onSingleTap: onHabitSingleTap,
                 onDoubleTap: { onHabitDoubleTap(entry) }

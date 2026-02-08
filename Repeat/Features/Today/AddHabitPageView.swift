@@ -10,7 +10,7 @@ struct AddHabitPageView: View {
                 .foregroundStyle(.secondary)
 
             Text("Add New Habit")
-                .font(.title2.weight(.semibold))
+                .font(.largeTitle.weight(.semibold))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)

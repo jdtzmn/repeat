@@ -11,6 +11,9 @@ import SwiftUI
 import UIKit
 
 struct ContentView: View {
+    private let completionAnimationDuration: TimeInterval = 0.48
+    private let pageAdvanceDuration: TimeInterval = 0.55
+
     private enum SelectionMode {
         case keepCurrent
         case specificHabit(UUID)
@@ -26,7 +29,8 @@ struct ContentView: View {
     @State private var selection = 0
     @State private var pendingFocusHabitID: UUID?
     @State private var completionProgressOverrides: [UUID: CGFloat] = [:]
-    @State private var strikethroughDirectionOverrides: [UUID: StrikethroughDirection] = [:]
+    @State private var isCompletionAnimationInFlight = false
+    @State private var toggleFlowTask: Task<Void, Never>?
     @State private var completionHaptics = CompletionHaptics()
     @FocusState private var focusedHabitID: UUID?
 
@@ -37,7 +41,7 @@ struct ContentView: View {
                 selection: $selection,
                 focusedHabitID: $focusedHabitID,
                 progressForHabit: progress(for:),
-                strikethroughDirectionForHabit: strikethroughDirection(for:),
+                isAnimatingCompletionForHabit: isAnimatingCompletion(for:),
                 onHabitSingleTap: endEditing,
                 onHabitDoubleTap: toggleHabit,
                 onAddDoubleTap: createHabitFromPlusPage
@@ -49,9 +53,15 @@ struct ContentView: View {
             refreshPages(selectionMode: .initial)
         }
         .onChange(of: habits.count) { _, _ in
+            guard !isCompletionAnimationInFlight else {
+                return
+            }
             refreshPages()
         }
         .onChange(of: completions.count) { _, _ in
+            guard !isCompletionAnimationInFlight else {
+                return
+            }
             refreshPages()
         }
         .onChange(of: selection) { _, _ in
@@ -63,6 +73,10 @@ struct ContentView: View {
                 return
             }
             selectAllFocusedText()
+        }
+        .onDisappear {
+            toggleFlowTask?.cancel()
+            toggleFlowTask = nil
         }
         .enableInjection()
     }
@@ -104,51 +118,78 @@ struct ContentView: View {
     }
 
     private func toggleHabit(_ entry: HabitPageEntry) {
+        guard !isCompletionAnimationInFlight else {
+            return
+        }
+
+        toggleFlowTask?.cancel()
+        toggleFlowTask = Task { @MainActor in
+            await runToggleFlow(for: entry)
+        }
+    }
+
+    @MainActor
+    private func runToggleFlow(for entry: HabitPageEntry) async {
         completionHaptics.triggerGestureFeedback()
+
+        let habitID = entry.habit.id
+        defer {
+            completionProgressOverrides[habitID] = nil
+            isCompletionAnimationInFlight = false
+            toggleFlowTask = nil
+        }
 
         let currentProgress = progress(for: entry)
         let targetProgress: CGFloat = currentProgress >= 0.5 ? 0 : 1
         let isCompleting = targetProgress > currentProgress
-        let direction: StrikethroughDirection = targetProgress > currentProgress ? .forward : .reverse
-        let nextIncompleteTarget = isCompleting ? nextIncompleteTarget(excluding: entry.habit.id) : nil
+        let nextIncompleteTarget = isCompleting ? nextIncompleteTarget(excluding: habitID) : nil
 
-        strikethroughDirectionOverrides[entry.habit.id] = direction
-        completionProgressOverrides[entry.habit.id] = currentProgress
+        isCompletionAnimationInFlight = true
+        completionProgressOverrides[habitID] = currentProgress
 
-        withAnimation(.easeInOut(duration: 0.24)) {
-            completionProgressOverrides[entry.habit.id] = targetProgress
+        withAnimation(.easeInOut(duration: completionAnimationDuration)) {
+            completionProgressOverrides[habitID] = targetProgress
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
-            completionProgressOverrides[entry.habit.id] = nil
-            strikethroughDirectionOverrides[entry.habit.id] = nil
+        if await sleep(seconds: completionAnimationDuration + 0.02) {
+            return
         }
 
+        let service = HabitService(modelContext: modelContext)
+        let toggleSucceeded: Bool
         do {
-            let service = HabitService(modelContext: modelContext)
             try service.toggleCompletion(for: entry.habit)
+            toggleSucceeded = true
+        } catch {
+            toggleSucceeded = false
+        }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                completionHaptics.triggerSettledFeedback()
-            }
+        if toggleSucceeded {
+            completionHaptics.triggerSettledFeedback()
 
             if let nextIncompleteTarget {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
-                    withAnimation(.easeInOut(duration: 0.48)) {
-                        selection = nextIncompleteTarget.index
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
-                        refreshPages(selectionMode: .specificHabit(nextIncompleteTarget.id))
-                    }
+                withAnimation(.easeInOut(duration: pageAdvanceDuration)) {
+                    selection = nextIncompleteTarget.index
                 }
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
-                    refreshPages(selectionMode: .specificHabit(entry.habit.id), animateSelection: true)
+
+                if await sleep(seconds: pageAdvanceDuration + 0.08) {
+                    return
                 }
             }
+            refreshPages(selectionMode: .keepCurrent)
+        } else {
+            refreshPages(selectionMode: .specificHabit(habitID))
+        }
+    }
+
+    @MainActor
+    private func sleep(seconds: TimeInterval) async -> Bool {
+        let nanoseconds = UInt64(seconds * 1_000_000_000)
+        do {
+            try await Task.sleep(nanoseconds: nanoseconds)
+            return Task.isCancelled
         } catch {
-            refreshPages(selectionMode: .specificHabit(entry.habit.id))
+            return true
         }
     }
 
@@ -207,8 +248,8 @@ struct ContentView: View {
         completionProgressOverrides[entry.habit.id] ?? (entry.isCompleted ? 1 : 0)
     }
 
-    private func strikethroughDirection(for entry: HabitPageEntry) -> StrikethroughDirection {
-        strikethroughDirectionOverrides[entry.habit.id] ?? .forward
+    private func isAnimatingCompletion(for entry: HabitPageEntry) -> Bool {
+        completionProgressOverrides[entry.habit.id] != nil
     }
 
     private func endEditing() {

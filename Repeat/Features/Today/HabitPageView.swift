@@ -1,22 +1,20 @@
 import Foundation
 import SwiftUI
 
-enum StrikethroughDirection {
-    case forward
-    case reverse
-}
-
 struct HabitPageView: View {
     let entry: HabitPageEntry
     let completionProgress: CGFloat
-    let strikethroughDirection: StrikethroughDirection
+    let shouldAnimateCompletion: Bool
     @FocusState.Binding var focusedHabitID: UUID?
     let onSingleTap: () -> Void
     let onDoubleTap: () -> Void
 
     var body: some View {
         ZStack {
-            CompletionPageBackground(progress: completionProgress)
+            CompletionPageBackground(
+                progress: completionProgress,
+                shouldAnimateCompletion: shouldAnimateCompletion
+            )
 
             Color.clear
                 .contentShape(Rectangle())
@@ -27,7 +25,8 @@ struct HabitPageView: View {
             VStack(spacing: 16) {
                 CompletionTransitionView(
                     emoji: entry.habit.emoji,
-                    completionProgress: completionProgress
+                    completionProgress: completionProgress,
+                    shouldAnimateCompletion: shouldAnimateCompletion
                 )
 
                 AnimatedStrikethroughTextField(
@@ -36,7 +35,7 @@ struct HabitPageView: View {
                         set: { entry.habit.name = $0 }
                     ),
                     completionProgress: completionProgress,
-                    direction: strikethroughDirection,
+                    shouldAnimateCompletion: shouldAnimateCompletion,
                     focusedHabitID: $focusedHabitID,
                     habitID: entry.habit.id
                 )
@@ -55,7 +54,7 @@ struct HabitPageView: View {
 private struct AnimatedStrikethroughTextField: View {
     @Binding var text: String
     let completionProgress: CGFloat
-    let direction: StrikethroughDirection
+    let shouldAnimateCompletion: Bool
     @FocusState.Binding var focusedHabitID: UUID?
     let habitID: UUID
 
@@ -67,20 +66,18 @@ private struct AnimatedStrikethroughTextField: View {
             .fixedSize(horizontal: true, vertical: false)
             .focused($focusedHabitID, equals: habitID)
             .overlay {
-                GeometryReader { geometry in
-                    let width = geometry.size.width * completionProgress
-                    let alignment: Alignment = direction == .forward ? .leading : .trailing
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.6))
-                        .frame(width: width, height: 2)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-                }
+                Rectangle()
+                    .fill(Color.primary.opacity(0.6))
+                    .frame(height: 2)
+                    .scaleEffect(x: max(0.001, completionProgress), y: 1, anchor: .leading)
+                    .animation(shouldAnimateCompletion ? .easeInOut(duration: 0.48) : nil, value: completionProgress)
             }
     }
 }
 
 private struct CompletionPageBackground: View {
     let progress: CGFloat
+    let shouldAnimateCompletion: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -90,7 +87,7 @@ private struct CompletionPageBackground: View {
                 .frame(width: diameter, height: diameter)
                 .scaleEffect(max(0.001, progress))
                 .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                .animation(.easeInOut(duration: 0.24), value: progress)
+                .animation(shouldAnimateCompletion ? .easeInOut(duration: 0.48) : nil, value: progress)
         }
         .allowsHitTesting(false)
     }

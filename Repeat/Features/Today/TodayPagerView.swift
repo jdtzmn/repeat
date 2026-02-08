@@ -9,7 +9,6 @@ struct TodayPagerView: View {
     let isAnimatingCompletionForHabit: (HabitPageEntry) -> Bool
     let onHabitSingleTap: () -> Void
     let onHabitDoubleTap: (HabitPageEntry) -> Void
-    let onHabitLongPress: (HabitPageEntry) -> Void
     let onAddDoubleTap: () -> Void
 
     var body: some View {
@@ -24,18 +23,16 @@ struct TodayPagerView: View {
     }
 
     @ViewBuilder
-    private func pageView(for page: HabitPagerPage, at index: Int) -> some View {
+    private func pageView(for page: HabitPagerPage, at _: Int) -> some View {
         switch page {
         case let .habit(entry):
             HabitPageView(
                 entry: entry,
                 completionProgress: progressForHabit(entry),
                 shouldAnimateCompletion: isAnimatingCompletionForHabit(entry),
-                isCenteredPage: index == selection,
                 focusedHabitID: $focusedHabitID,
                 onSingleTap: onHabitSingleTap,
-                onDoubleTap: { onHabitDoubleTap(entry) },
-                onLongPress: { onHabitLongPress(entry) }
+                onDoubleTap: { onHabitDoubleTap(entry) }
             )
 
         case .add:

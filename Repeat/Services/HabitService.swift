@@ -93,6 +93,11 @@ struct HabitService {
         return max(pages.count - 1, 0)
     }
 
+    func archiveHabit(_ habit: Habit) throws {
+        habit.isArchived = true
+        try modelContext.save()
+    }
+
     func reorderHabits(orderedIDs: [UUID]) throws {
         let habits = try activeHabits()
         guard !habits.isEmpty else {

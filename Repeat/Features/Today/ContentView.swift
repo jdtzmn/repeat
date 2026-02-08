@@ -20,9 +20,9 @@ struct ContentView: View {
         case initial
     }
 
-    private enum InteractionMode {
-        case browse
-        case reorder
+    private enum VerticalPage: Int {
+        case manage = 0
+        case today = 1
     }
 
     @ObserveInjection var inject
@@ -32,40 +32,30 @@ struct ContentView: View {
 
     @State private var pages: [HabitPagerPage] = [.add]
     @State private var selection = 0
+    @State private var verticalPage: VerticalPage? = .today
     @State private var pendingFocusHabitID: UUID?
     @State private var completionProgressOverrides: [UUID: CGFloat] = [:]
     @State private var isCompletionAnimationInFlight = false
     @State private var toggleFlowTask: Task<Void, Never>?
-    @State private var interactionMode: InteractionMode = .browse
-    @State private var reorderItems: [ReorderHabitItem] = []
     @State private var completionHaptics = CompletionHaptics()
     @FocusState private var focusedHabitID: UUID?
 
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                TodayPagerView(
-                    pages: pages,
-                    selection: $selection,
-                    focusedHabitID: $focusedHabitID,
-                    progressForHabit: progress(for:),
-                    isAnimatingCompletionForHabit: isAnimatingCompletion(for:),
-                    onHabitSingleTap: endEditing,
-                    onHabitDoubleTap: toggleHabit,
-                    onHabitLongPress: beginReorder,
-                    onAddDoubleTap: createHabitFromPlusPage
-                )
+        GeometryReader { geometry in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 0) {
+                    ManageHabitsPage()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .id(VerticalPage.manage)
 
-                TodayHistoryView()
+                    todayContent
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .id(VerticalPage.today)
+                }
             }
-            .allowsHitTesting(interactionMode == .browse)
-
-            if interactionMode == .reorder {
-                ReorderOverlayView(
-                    initialItems: reorderItems,
-                    onDone: commitReorder
-                )
-            }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $verticalPage)
+            .defaultScrollAnchor(.bottom)
         }
         .task {
             ensureHabitEmojis()
@@ -73,13 +63,13 @@ struct ContentView: View {
         }
         .onChange(of: habits.count) { _, _ in
             ensureHabitEmojis()
-            guard !isCompletionAnimationInFlight, interactionMode == .browse else {
+            guard !isCompletionAnimationInFlight, verticalPage == .today else {
                 return
             }
             refreshPages()
         }
         .onChange(of: completions.count) { _, _ in
-            guard !isCompletionAnimationInFlight, interactionMode == .browse else {
+            guard !isCompletionAnimationInFlight, verticalPage == .today else {
                 return
             }
             refreshPages()
@@ -94,11 +84,33 @@ struct ContentView: View {
             }
             selectAllFocusedText()
         }
+        .onChange(of: verticalPage) { _, newValue in
+            if newValue == .today {
+                refreshPages(selectionMode: .initial)
+            }
+        }
         .onDisappear {
             toggleFlowTask?.cancel()
             toggleFlowTask = nil
         }
         .enableInjection()
+    }
+
+    private var todayContent: some View {
+        VStack(spacing: 0) {
+            TodayPagerView(
+                pages: pages,
+                selection: $selection,
+                focusedHabitID: $focusedHabitID,
+                progressForHabit: progress(for:),
+                isAnimatingCompletionForHabit: isAnimatingCompletion(for:),
+                onHabitSingleTap: endEditing,
+                onHabitDoubleTap: toggleHabit,
+                onAddDoubleTap: createHabitFromPlusPage
+            )
+
+            TodayHistoryView()
+        }
     }
 
     private func refreshPages() {
@@ -138,7 +150,7 @@ struct ContentView: View {
     }
 
     private func toggleHabit(_ entry: HabitPageEntry) {
-        guard !isCompletionAnimationInFlight, interactionMode == .browse else {
+        guard !isCompletionAnimationInFlight, verticalPage == .today else {
             return
         }
 
@@ -242,7 +254,7 @@ struct ContentView: View {
     }
 
     private func createHabitFromPlusPage() {
-        guard interactionMode == .browse else {
+        guard verticalPage == .today else {
             return
         }
 
@@ -325,39 +337,6 @@ struct ContentView: View {
         do {
             try modelContext.save()
         } catch {}
-    }
-
-    private func beginReorder(_: HabitPageEntry) {
-        guard interactionMode == .browse, !isCompletionAnimationInFlight else {
-            return
-        }
-
-        do {
-            let service = HabitService(modelContext: modelContext)
-            let activeHabits = try service.activeHabits()
-            guard activeHabits.count > 1 else {
-                return
-            }
-
-            endEditing()
-            reorderItems = activeHabits.map {
-                ReorderHabitItem(id: $0.id, emoji: $0.emoji, name: $0.name)
-            }
-            interactionMode = .reorder
-        } catch {
-            return
-        }
-    }
-
-    private func commitReorder(_ orderedIDs: [UUID]) {
-        do {
-            let service = HabitService(modelContext: modelContext)
-            try service.reorderHabits(orderedIDs: orderedIDs)
-        } catch {}
-
-        interactionMode = .browse
-        reorderItems = []
-        refreshPages(selectionMode: .keepCurrent)
     }
 }
 

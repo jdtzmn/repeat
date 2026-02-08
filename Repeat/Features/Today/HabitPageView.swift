@@ -6,9 +6,11 @@ struct HabitPageView: View {
     let entry: HabitPageEntry
     let completionProgress: CGFloat
     let shouldAnimateCompletion: Bool
+    let isCenteredPage: Bool
     @FocusState.Binding var focusedHabitID: UUID?
     let onSingleTap: () -> Void
     let onDoubleTap: () -> Void
+    let onLongPress: () -> Void
 
     @State private var isEmojiPickerPresented = false
     @State private var selectedEmoji: Emoji?
@@ -57,6 +59,12 @@ struct HabitPageView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             onDoubleTap()
+        }
+        .onLongPressGesture(minimumDuration: 0.25) {
+            guard isCenteredPage else {
+                return
+            }
+            onLongPress()
         }
         .emojiPicker(
             isPresented: $isEmojiPickerPresented,

@@ -93,6 +93,35 @@ struct HabitService {
         return max(pages.count - 1, 0)
     }
 
+    func reorderHabits(orderedIDs: [UUID]) throws {
+        let habits = try activeHabits()
+        guard !habits.isEmpty else {
+            return
+        }
+
+        var rankByID: [UUID: Int] = [:]
+        for (index, id) in orderedIDs.enumerated() {
+            rankByID[id] = index
+        }
+
+        let fallbackStart = orderedIDs.count
+        let orderedHabits = habits.sorted { lhs, rhs in
+            let lhsRank = rankByID[lhs.id] ?? (fallbackStart + lhs.sortOrder)
+            let rhsRank = rankByID[rhs.id] ?? (fallbackStart + rhs.sortOrder)
+            return lhsRank < rhsRank
+        }
+
+        var didMutate = false
+        for (index, habit) in orderedHabits.enumerated() where habit.sortOrder != index {
+            habit.sortOrder = index
+            didMutate = true
+        }
+
+        if didMutate {
+            try modelContext.save()
+        }
+    }
+
     private func nextSortOrder() throws -> Int {
         var descriptor = FetchDescriptor<Habit>()
         descriptor.sortBy = [SortDescriptor(\Habit.sortOrder, order: .reverse)]

@@ -1,3 +1,4 @@
+import ElegantEmojiPicker
 import Foundation
 import SwiftUI
 
@@ -10,6 +11,7 @@ struct HabitPageView: View {
     let onDoubleTap: () -> Void
 
     @State private var isEmojiPickerPresented = false
+    @State private var selectedEmoji: Emoji?
 
     var body: some View {
         ZStack {
@@ -56,11 +58,16 @@ struct HabitPageView: View {
         .onTapGesture(count: 2) {
             onDoubleTap()
         }
-        .sheet(isPresented: $isEmojiPickerPresented) {
-            EmojiPickerView { emoji in
-                entry.habit.emoji = Habit.normalizedEmoji(emoji)
-                isEmojiPickerPresented = false
+        .emojiPicker(
+            isPresented: $isEmojiPickerPresented,
+            selectedEmoji: $selectedEmoji,
+            configuration: ElegantConfiguration(showReset: false)
+        )
+        .onChange(of: selectedEmoji) { _, newValue in
+            guard let emojiValue = newValue?.emoji else {
+                return
             }
+            entry.habit.emoji = Habit.normalizedEmoji(emojiValue)
         }
     }
 }

@@ -40,6 +40,28 @@ jobs:
           path: ${{ env.BUILD_DIR }}
           key: ${{ env.CACHE_KEY }}
 
+      - name: Preflight simulator destination
+        run: |
+          set -eo pipefail
+          echo "Validating simulator destination: ${DESTINATION}"
+          if xcodebuild -project Repeat.xcodeproj -scheme Repeat -destination "${DESTINATION}" -showBuildSettings >/dev/null 2>&1; then
+            echo "Simulator destination is available."
+            exit 0
+          fi
+
+          echo "::error::Configured simulator destination is unavailable: ${DESTINATION}"
+          echo "Available destinations for Repeat scheme:"
+          xcodebuild -project Repeat.xcodeproj -scheme Repeat -showdestinations || true
+          echo
+          echo "Installed simulator runtimes:"
+          xcrun simctl list runtimes || true
+          echo
+          echo "Available simulator devices:"
+          xcrun simctl list devices available || true
+          exit 1
+        env:
+          DESTINATION: ${{ matrix.destination }}
+
       - name: Build
         run: |
           defaults write com.apple.dt.Xcode IDESkipPackagePluginHandshake -bool YES

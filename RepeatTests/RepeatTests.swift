@@ -5,10 +5,10 @@
 //  Created by Jacob Daitzman on 2/7/26.
 //
 
-import Testing
 import Foundation
-import SwiftData
 @testable import Repeat
+import SwiftData
+import Testing
 
 struct RepeatTests {
     @Test func dayServiceNormalizesToStartOfDay() {

@@ -5,9 +5,9 @@
 //  Created by Jacob Daitzman on 2/7/26.
 //
 
-import SwiftUI
-import SwiftData
 import Inject
+import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     private enum SelectionMode {

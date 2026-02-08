@@ -5,8 +5,8 @@
 //  Created by Jacob Daitzman on 2/7/26.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct RepeatApp: App {

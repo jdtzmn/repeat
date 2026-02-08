@@ -15,7 +15,7 @@ struct HabitService {
     let modelContext: ModelContext
 
     func createHabit(name: String = "New Habit", emoji: String = "") throws -> Habit {
-        let habit = Habit(name: name, emoji: emoji, sortOrder: try nextSortOrder())
+        let habit = try Habit(name: name, emoji: emoji, sortOrder: nextSortOrder())
         modelContext.insert(habit)
         try modelContext.save()
         return habit
@@ -58,7 +58,7 @@ struct HabitService {
 
     func pagerPages(for dayStart: Date = DayService.todayStart()) throws -> [HabitPagerPage] {
         let habits = try activeHabits()
-        let completionSet = Set(try completions(on: dayStart).map(\.habitID))
+        let completionSet = try Set(completions(on: dayStart).map(\.habitID))
 
         let completedPages = habits
             .filter { completionSet.contains($0.id) }

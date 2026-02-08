@@ -71,7 +71,7 @@ struct ContentView: View {
         refreshPages(selectionMode: .keepCurrent)
     }
 
-    private func refreshPages(selectionMode: SelectionMode) {
+    private func refreshPages(selectionMode: SelectionMode, animateSelection: Bool = false) {
         let service = HabitService(modelContext: modelContext)
         do {
             pages = try service.pagerPages()
@@ -84,17 +84,17 @@ struct ContentView: View {
                     }
                     return false
                 }) {
-                    selection = nextSelection
+                    setSelection(nextSelection, animated: animateSelection)
                 } else {
-                    selection = service.initialPageIndex(for: pages)
+                    setSelection(service.initialPageIndex(for: pages), animated: animateSelection)
                 }
 
             case .initial:
-                selection = service.initialPageIndex(for: pages)
+                setSelection(service.initialPageIndex(for: pages), animated: animateSelection)
 
             case .keepCurrent:
                 if selection >= pages.count {
-                    selection = max(pages.count - 1, 0)
+                    setSelection(max(pages.count - 1, 0), animated: animateSelection)
                 }
             }
         } catch {
@@ -110,7 +110,7 @@ struct ContentView: View {
         let targetProgress: CGFloat = currentProgress >= 0.5 ? 0 : 1
         let isCompleting = targetProgress > currentProgress
         let direction: StrikethroughDirection = targetProgress > currentProgress ? .forward : .reverse
-        let nextIncompleteHabitID = isCompleting ? nextIncompleteHabitID(excluding: entry.habit.id) : nil
+        let nextIncompleteTarget = isCompleting ? nextIncompleteTarget(excluding: entry.habit.id) : nil
 
         strikethroughDirectionOverrides[entry.habit.id] = direction
         completionProgressOverrides[entry.habit.id] = currentProgress
@@ -132,16 +132,27 @@ struct ContentView: View {
                 completionHaptics.triggerSettledFeedback()
             }
 
-            let selectedHabitID = nextIncompleteHabitID ?? entry.habit.id
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-                refreshPages(selectionMode: .specificHabit(selectedHabitID))
+            if let nextIncompleteTarget {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
+                    withAnimation(.easeInOut(duration: 0.48)) {
+                        selection = nextIncompleteTarget.index
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+                        refreshPages(selectionMode: .specificHabit(nextIncompleteTarget.id))
+                    }
+                }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
+                    refreshPages(selectionMode: .specificHabit(entry.habit.id), animateSelection: true)
+                }
             }
         } catch {
             refreshPages(selectionMode: .specificHabit(entry.habit.id))
         }
     }
 
-    private func nextIncompleteHabitID(excluding habitID: UUID) -> UUID? {
+    private func nextIncompleteTarget(excluding habitID: UUID) -> (id: UUID, index: Int)? {
         guard pages.indices.contains(selection) else {
             return nil
         }
@@ -152,7 +163,7 @@ struct ContentView: View {
             }
 
             if !entry.isCompleted, entry.habit.id != habitID {
-                return entry.habit.id
+                return (entry.habit.id, index)
             }
         }
 
@@ -209,6 +220,17 @@ struct ContentView: View {
         do {
             try modelContext.save()
         } catch {}
+    }
+
+    private func setSelection(_ newSelection: Int, animated: Bool) {
+        guard animated else {
+            selection = newSelection
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.48)) {
+            selection = newSelection
+        }
     }
 }
 

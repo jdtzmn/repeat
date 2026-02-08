@@ -37,8 +37,7 @@ struct ContentView: View {
     @State private var isCompletionAnimationInFlight = false
     @State private var toggleFlowTask: Task<Void, Never>?
     @State private var interactionMode: InteractionMode = .browse
-    @State private var reorderHabits: [Habit] = []
-    @State private var reorderInitialHabitID: UUID?
+    @State private var reorderItems: [ReorderHabitItem] = []
     @State private var completionHaptics = CompletionHaptics()
     @FocusState private var focusedHabitID: UUID?
 
@@ -61,14 +60,11 @@ struct ContentView: View {
             }
             .allowsHitTesting(interactionMode == .browse)
 
-            if interactionMode == .reorder, let reorderInitialHabitID {
+            if interactionMode == .reorder {
                 ReorderOverlayView(
-                    habits: reorderHabits,
-                    initialDraggedHabitID: reorderInitialHabitID,
-                    onCancel: cancelReorder,
-                    onCommit: commitReorder
+                    initialItems: reorderItems,
+                    onDone: commitReorder
                 )
-                .transition(.opacity)
             }
         }
         .task {
@@ -331,7 +327,7 @@ struct ContentView: View {
         } catch {}
     }
 
-    private func beginReorder(_ entry: HabitPageEntry) {
+    private func beginReorder(_: HabitPageEntry) {
         guard interactionMode == .browse, !isCompletionAnimationInFlight else {
             return
         }
@@ -344,36 +340,24 @@ struct ContentView: View {
             }
 
             endEditing()
-            reorderHabits = activeHabits
-            reorderInitialHabitID = entry.habit.id
-            withAnimation(.easeInOut(duration: 0.2)) {
-                interactionMode = .reorder
+            reorderItems = activeHabits.map {
+                ReorderHabitItem(id: $0.id, emoji: $0.emoji, name: $0.name)
             }
+            interactionMode = .reorder
         } catch {
             return
         }
     }
 
-    private func cancelReorder() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            interactionMode = .browse
-        }
-        reorderHabits = []
-        reorderInitialHabitID = nil
-    }
-
-    private func commitReorder(_ orderedIDs: [UUID], focusedHabitID: UUID) {
+    private func commitReorder(_ orderedIDs: [UUID]) {
         do {
             let service = HabitService(modelContext: modelContext)
             try service.reorderHabits(orderedIDs: orderedIDs)
         } catch {}
 
-        withAnimation(.easeInOut(duration: 0.2)) {
-            interactionMode = .browse
-        }
-        reorderHabits = []
-        reorderInitialHabitID = nil
-        refreshPages(selectionMode: .specificHabit(focusedHabitID))
+        interactionMode = .browse
+        reorderItems = []
+        refreshPages(selectionMode: .keepCurrent)
     }
 }
 

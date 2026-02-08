@@ -1,5 +1,5 @@
 {
-  "originHash" : "73968b047add1bf3ee9b333d4fbc73f0448bc38b7202bbb97d893ab1d1cc8288",
+  "originHash" : "a7c91c7c8c00e11afe3a95302afa265f6bcff7ae39ed8b8620e666aebcc81b09",
   "pins" : [
     {
       "identity" : "elegant-emoji-picker",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "728c56639ecb3df441d51d5bc6747329afabcfc9",
         "version" : "1.5.2"
+      }
+    },
+    {
+      "identity" : "reorderable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/visfitness/reorderable",
+      "state" : {
+        "revision" : "25319647c88b1872b17f9cedc1424f0626c11f77",
+        "version" : "1.3.1"
       }
     }
   ],

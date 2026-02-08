@@ -6,12 +6,6 @@ struct CompletionTransitionView: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(Color.accentColor.opacity(0.24))
-                .frame(width: 92, height: 92)
-                .scaleEffect(max(0.001, 0.7 + (completionProgress * 0.7)))
-                .opacity(completionProgress)
-
             Text(emoji.isEmpty ? "🙂" : emoji)
                 .font(.system(size: 72))
                 .scaleEffect(max(0.001, 1 - completionProgress))

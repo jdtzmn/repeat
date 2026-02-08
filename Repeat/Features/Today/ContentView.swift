@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var selection = 0
     @State private var pendingFocusHabitID: UUID?
     @State private var completionProgressOverrides: [UUID: CGFloat] = [:]
+    @State private var strikethroughDirectionOverrides: [UUID: StrikethroughDirection] = [:]
     @State private var completionHaptics = CompletionHaptics()
     @FocusState private var focusedHabitID: UUID?
 
@@ -36,6 +37,7 @@ struct ContentView: View {
                 selection: $selection,
                 focusedHabitID: $focusedHabitID,
                 progressForHabit: progress(for:),
+                strikethroughDirectionForHabit: strikethroughDirection(for:),
                 onHabitSingleTap: endEditing,
                 onHabitDoubleTap: toggleHabit,
                 onAddDoubleTap: createHabitFromPlusPage
@@ -106,6 +108,11 @@ struct ContentView: View {
 
         let currentProgress = progress(for: entry)
         let targetProgress: CGFloat = currentProgress >= 0.5 ? 0 : 1
+        let isCompleting = targetProgress > currentProgress
+        let direction: StrikethroughDirection = targetProgress > currentProgress ? .forward : .reverse
+        let nextIncompleteHabitID = isCompleting ? nextIncompleteHabitID(excluding: entry.habit.id) : nil
+
+        strikethroughDirectionOverrides[entry.habit.id] = direction
         completionProgressOverrides[entry.habit.id] = currentProgress
 
         withAnimation(.easeInOut(duration: 0.24)) {
@@ -114,18 +121,42 @@ struct ContentView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
             completionProgressOverrides[entry.habit.id] = nil
+            strikethroughDirectionOverrides[entry.habit.id] = nil
         }
 
         do {
             let service = HabitService(modelContext: modelContext)
             try service.toggleCompletion(for: entry.habit)
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
                 completionHaptics.triggerSettledFeedback()
             }
-            refreshPages(selectionMode: .specificHabit(entry.habit.id))
+
+            let selectedHabitID = nextIncompleteHabitID ?? entry.habit.id
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+                refreshPages(selectionMode: .specificHabit(selectedHabitID))
+            }
         } catch {
             refreshPages(selectionMode: .specificHabit(entry.habit.id))
         }
+    }
+
+    private func nextIncompleteHabitID(excluding habitID: UUID) -> UUID? {
+        guard pages.indices.contains(selection) else {
+            return nil
+        }
+
+        for index in (selection + 1) ..< pages.count {
+            guard case let .habit(entry) = pages[index] else {
+                continue
+            }
+
+            if !entry.isCompleted, entry.habit.id != habitID {
+                return entry.habit.id
+            }
+        }
+
+        return nil
     }
 
     private func createHabitFromPlusPage() {
@@ -163,6 +194,10 @@ struct ContentView: View {
 
     private func progress(for entry: HabitPageEntry) -> CGFloat {
         completionProgressOverrides[entry.habit.id] ?? (entry.isCompleted ? 1 : 0)
+    }
+
+    private func strikethroughDirection(for entry: HabitPageEntry) -> StrikethroughDirection {
+        strikethroughDirectionOverrides[entry.habit.id] ?? .forward
     }
 
     private func endEditing() {

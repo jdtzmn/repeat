@@ -6,6 +6,7 @@ struct TodayPagerView: View {
     @Binding var selection: Int
     @FocusState.Binding var focusedHabitID: UUID?
     let progressForHabit: (HabitPageEntry) -> CGFloat
+    let strikethroughDirectionForHabit: (HabitPageEntry) -> StrikethroughDirection
     let onHabitSingleTap: () -> Void
     let onHabitDoubleTap: (HabitPageEntry) -> Void
     let onAddDoubleTap: () -> Void
@@ -27,6 +28,7 @@ struct TodayPagerView: View {
             HabitPageView(
                 entry: entry,
                 completionProgress: progressForHabit(entry),
+                strikethroughDirection: strikethroughDirectionForHabit(entry),
                 focusedHabitID: $focusedHabitID,
                 onSingleTap: onHabitSingleTap,
                 onDoubleTap: { onHabitDoubleTap(entry) }

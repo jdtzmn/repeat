@@ -44,6 +44,7 @@ struct ContentView: View {
             refreshPages()
         }
         .onChange(of: selection) { _, _ in
+            endEditing()
             focusPendingHabitIfNeeded()
         }
         .enableInjection()
@@ -53,26 +54,34 @@ struct ContentView: View {
     private func pageView(for page: HabitPagerPage) -> some View {
         switch page {
         case let .habit(entry):
-            VStack(spacing: 16) {
-                if !entry.habit.emoji.isEmpty {
-                    Text(entry.habit.emoji)
-                        .font(.system(size: 72))
-                }
+            ZStack {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        endEditing()
+                    }
 
-                TextField(
-                    "New Habit",
-                    text: Binding(
-                        get: { entry.habit.name },
-                        set: { entry.habit.name = $0 }
+                VStack(spacing: 16) {
+                    if !entry.habit.emoji.isEmpty {
+                        Text(entry.habit.emoji)
+                            .font(.system(size: 72))
+                    }
+
+                    TextField(
+                        "New Habit",
+                        text: Binding(
+                            get: { entry.habit.name },
+                            set: { entry.habit.name = $0 }
+                        )
                     )
-                )
-                .textFieldStyle(.plain)
-                .font(.largeTitle.weight(.semibold))
-                .multilineTextAlignment(.center)
-                .focused($focusedHabitID, equals: entry.habit.id)
+                    .textFieldStyle(.plain)
+                    .font(.largeTitle.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .focused($focusedHabitID, equals: entry.habit.id)
 
-                Text(entry.isCompleted ? "Completed today" : "Not completed yet")
-                    .foregroundStyle(.secondary)
+                    Text(entry.isCompleted ? "Completed today" : "Not completed yet")
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
@@ -170,6 +179,17 @@ struct ContentView: View {
             focusedHabitID = pendingFocusHabitID
             self.pendingFocusHabitID = nil
         }
+    }
+
+    private func endEditing() {
+        guard focusedHabitID != nil else {
+            return
+        }
+
+        focusedHabitID = nil
+        do {
+            try modelContext.save()
+        } catch {}
     }
 }
 

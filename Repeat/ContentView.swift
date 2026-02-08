@@ -8,6 +8,7 @@
 import Inject
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     private enum SelectionMode {
@@ -46,6 +47,12 @@ struct ContentView: View {
         .onChange(of: selection) { _, _ in
             endEditing()
             focusPendingHabitIfNeeded()
+        }
+        .onChange(of: focusedHabitID) { _, newValue in
+            guard newValue != nil else {
+                return
+            }
+            selectAllFocusedText()
         }
         .enableInjection()
     }
@@ -178,6 +185,12 @@ struct ContentView: View {
         if case let .habit(entry) = pages[selection], entry.habit.id == pendingFocusHabitID {
             focusedHabitID = pendingFocusHabitID
             self.pendingFocusHabitID = nil
+        }
+    }
+
+    private func selectAllFocusedText() {
+        DispatchQueue.main.async {
+            UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
         }
     }
 

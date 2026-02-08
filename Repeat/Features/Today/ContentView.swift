@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var isCompletionAnimationInFlight = false
     @State private var toggleFlowTask: Task<Void, Never>?
     @State private var completionHaptics = CompletionHaptics()
+    @State private var todayPagerReloadToken = UUID()
     @FocusState private var focusedHabitID: UUID?
 
     var body: some View {
@@ -61,15 +62,15 @@ struct ContentView: View {
             ensureHabitEmojis()
             refreshPages(selectionMode: .initial)
         }
-        .onChange(of: habits.count) { _, _ in
+        .onChange(of: habits) { _, _ in
             ensureHabitEmojis()
-            guard !isCompletionAnimationInFlight, verticalPage == .today else {
+            guard !isCompletionAnimationInFlight else {
                 return
             }
             refreshPages()
         }
         .onChange(of: completions.count) { _, _ in
-            guard !isCompletionAnimationInFlight, verticalPage == .today else {
+            guard !isCompletionAnimationInFlight else {
                 return
             }
             refreshPages()
@@ -87,6 +88,7 @@ struct ContentView: View {
         .onChange(of: verticalPage) { _, newValue in
             if newValue == .today {
                 refreshPages(selectionMode: .initial)
+                todayPagerReloadToken = UUID()
             }
         }
         .onDisappear {
@@ -108,6 +110,7 @@ struct ContentView: View {
                 onHabitDoubleTap: toggleHabit,
                 onAddDoubleTap: createHabitFromPlusPage
             )
+            .id(todayPagerReloadToken)
 
             TodayHistoryView()
         }

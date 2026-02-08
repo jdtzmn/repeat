@@ -12,14 +12,13 @@ struct ManageHabitsPage: View {
     @State private var orderedHabits: [Habit] = []
     @State private var habitToDelete: Habit?
     @State private var showDeleteConfirmation = false
+    @State private var swipeOffsets: [UUID: CGFloat] = [:]
+
+    private let deleteThreshold: CGFloat = -80
+    private let maxSwipeDistance: CGFloat = -120
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Manage Habits")
-                .font(.title2.weight(.bold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-
             ScrollView {
                 ReorderableVStack(
                     orderedHabits,
@@ -33,7 +32,8 @@ struct ManageHabitsPage: View {
                         persistOrder()
                     },
                     content: { habit, isDragged in
-                        habitRow(habit: habit, isDragged: isDragged)
+                        swipeableRow(habit: habit, isDragged: isDragged)
+                            .padding(.vertical, 4)
                     }
                 )
                 .padding(.horizontal, 20)
@@ -49,56 +49,90 @@ struct ManageHabitsPage: View {
         .onChange(of: habits) { _, newValue in
             orderedHabits = newValue
         }
-        .confirmationDialog(
+        .alert(
             "Delete \(habitToDelete?.name ?? "habit")?",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
+            isPresented: $showDeleteConfirmation
         ) {
             Button("Delete", role: .destructive) {
                 guard let habit = habitToDelete else {
                     return
                 }
-                archiveHabit(habit)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    swipeOffsets[habit.id] = nil
+                    archiveHabit(habit)
+                }
                 habitToDelete = nil
             }
             Button("Cancel", role: .cancel) {
-                habitToDelete = nil
+                cancelDelete()
             }
         } message: {
             Text("This habit will be removed from your daily list. Past completion data is kept.")
         }
     }
 
-    private func habitRow(habit: Habit, isDragged: Bool) -> some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 14) {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(.tertiary)
-                    .dragHandle()
+    private func swipeableRow(habit: Habit, isDragged: Bool) -> some View {
+        let offset = swipeOffsets[habit.id] ?? 0
 
-                Text(habit.emoji)
-                    .font(.system(size: 28))
-
-                Text(habit.name)
-                    .font(.body.weight(.medium))
-                    .lineLimit(1)
-
-                Spacer()
+        return ZStack(alignment: .trailing) {
+            if offset < 0 {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.red)
+                    .overlay(alignment: .trailing) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.trailing, 20)
+                            .opacity(offset < deleteThreshold * 0.4 ? 1 : 0)
+                    }
             }
 
-            Button {
-                habitToDelete = habit
-                showDeleteConfirmation = true
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(.red.opacity(0.7))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-            }
-            .buttonStyle(.plain)
+            habitRow(habit: habit, isDragged: isDragged)
+                .offset(x: offset)
+                .gesture(
+                    DragGesture(minimumDistance: 20)
+                        .onChanged { value in
+                            let translation = value.translation.width
+                            if translation < 0 {
+                                swipeOffsets[habit.id] = rubberBand(translation)
+                            }
+                        }
+                        .onEnded { _ in
+                            if offset < deleteThreshold {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    swipeOffsets[habit.id] = 0
+                                }
+                                habitToDelete = habit
+                                showDeleteConfirmation = true
+                            } else {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    swipeOffsets[habit.id] = 0
+                                }
+                            }
+                        }
+                )
         }
-        .padding(.leading, 16)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func habitRow(habit: Habit, isDragged: Bool) -> some View {
+        HStack(spacing: 14) {
+            Text(habit.emoji)
+                .font(.system(size: 28))
+
+            Text(habit.name)
+                .font(.body.weight(.medium))
+                .lineLimit(1)
+
+            Spacer()
+
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 16)
         .frame(height: 62)
+        .contentShape(Rectangle())
+        .dragHandle()
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(.secondarySystemBackground))
@@ -117,6 +151,22 @@ struct ManageHabitsPage: View {
         do {
             try service.reorderHabits(orderedIDs: orderedHabits.map(\.id))
         } catch {}
+    }
+
+    private func cancelDelete() {
+        if let habit = habitToDelete {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                swipeOffsets[habit.id] = 0
+            }
+        }
+        habitToDelete = nil
+    }
+
+    private func rubberBand(_ translation: CGFloat) -> CGFloat {
+        let limit = -maxSwipeDistance
+        let absTranslation = min(abs(translation), limit * 3)
+        let dampened = limit * (1 - exp(-absTranslation / limit))
+        return -dampened
     }
 
     private func archiveHabit(_ habit: Habit) {

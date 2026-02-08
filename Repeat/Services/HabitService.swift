@@ -14,8 +14,8 @@ enum HabitPagerPage {
 struct HabitService {
     let modelContext: ModelContext
 
-    func createHabit(name: String = "New Habit", emoji: String = "") throws -> Habit {
-        let habit = try Habit(name: name, emoji: emoji, sortOrder: nextSortOrder())
+    func createHabit(name: String = "New Habit", emoji: String = Habit.defaultEmoji) throws -> Habit {
+        let habit = try Habit(name: name, emoji: Habit.normalizedEmoji(emoji), sortOrder: nextSortOrder())
         modelContext.insert(habit)
         try modelContext.save()
         return habit

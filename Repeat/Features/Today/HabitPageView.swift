@@ -9,6 +9,8 @@ struct HabitPageView: View {
     let onSingleTap: () -> Void
     let onDoubleTap: () -> Void
 
+    @State private var isEmojiPickerPresented = false
+
     var body: some View {
         ZStack {
             CompletionPageBackground(
@@ -23,11 +25,17 @@ struct HabitPageView: View {
                 }
 
             VStack(spacing: 16) {
-                CompletionTransitionView(
-                    emoji: entry.habit.emoji,
-                    completionProgress: completionProgress,
-                    shouldAnimateCompletion: shouldAnimateCompletion
-                )
+                Button {
+                    onSingleTap()
+                    isEmojiPickerPresented = true
+                } label: {
+                    CompletionTransitionView(
+                        emoji: entry.habit.emoji,
+                        completionProgress: completionProgress,
+                        shouldAnimateCompletion: shouldAnimateCompletion
+                    )
+                }
+                .buttonStyle(.plain)
 
                 AnimatedStrikethroughTextField(
                     text: Binding(
@@ -47,6 +55,12 @@ struct HabitPageView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             onDoubleTap()
+        }
+        .sheet(isPresented: $isEmojiPickerPresented) {
+            EmojiPickerView { emoji in
+                entry.habit.emoji = Habit.normalizedEmoji(emoji)
+                isEmojiPickerPresented = false
+            }
         }
     }
 }

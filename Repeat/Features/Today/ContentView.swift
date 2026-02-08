@@ -50,9 +50,11 @@ struct ContentView: View {
             TodayHistoryView()
         }
         .task {
+            ensureHabitEmojis()
             refreshPages(selectionMode: .initial)
         }
         .onChange(of: habits.count) { _, _ in
+            ensureHabitEmojis()
             guard !isCompletionAnimationInFlight else {
                 return
             }
@@ -224,7 +226,7 @@ struct ContentView: View {
     private func createHabitFromPlusPage() {
         do {
             let service = HabitService(modelContext: modelContext)
-            let habit = try service.createHabit(name: "New Habit")
+            let habit = try service.createHabit(name: "New Habit", emoji: Habit.defaultEmoji)
             refreshPages(selectionMode: .specificHabit(habit.id))
             pendingFocusHabitID = habit.id
             focusPendingHabitIfNeeded()
@@ -282,6 +284,25 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.48)) {
             selection = newSelection
         }
+    }
+
+    private func ensureHabitEmojis() {
+        var didMutate = false
+        for habit in habits {
+            let normalized = Habit.normalizedEmoji(habit.emoji)
+            if habit.emoji != normalized {
+                habit.emoji = normalized
+                didMutate = true
+            }
+        }
+
+        guard didMutate else {
+            return
+        }
+
+        do {
+            try modelContext.save()
+        } catch {}
     }
 }
 

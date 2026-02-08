@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class Habit {
+    static let defaultEmoji = "✅️"
+
     var id: UUID
     var name: String
     var emoji: String
@@ -13,7 +15,7 @@ final class Habit {
     init(
         id: UUID = UUID(),
         name: String = "New Habit",
-        emoji: String = "",
+        emoji: String = Habit.defaultEmoji,
         sortOrder: Int,
         createdAt: Date = Date(),
         isArchived: Bool = false
@@ -24,5 +26,12 @@ final class Habit {
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.isArchived = isArchived
+    }
+
+    static func normalizedEmoji(_ value: String) -> String {
+        guard let first = value.first else {
+            return defaultEmoji
+        }
+        return String(first)
     }
 }

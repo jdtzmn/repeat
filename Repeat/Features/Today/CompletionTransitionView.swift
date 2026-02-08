@@ -7,7 +7,7 @@ struct CompletionTransitionView: View {
 
     var body: some View {
         ZStack {
-            Text(emoji.isEmpty ? "🙂" : emoji)
+            Text(emoji.isEmpty ? Habit.defaultEmoji : emoji)
                 .font(.system(size: 72))
                 .scaleEffect(max(0.001, 1 - completionProgress))
                 .opacity(1 - completionProgress)

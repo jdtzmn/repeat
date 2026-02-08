@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var selection = 0
     @State private var pendingFocusHabitID: UUID?
     @State private var completionProgressOverrides: [UUID: CGFloat] = [:]
+    @State private var completionHaptics = CompletionHaptics()
     @FocusState private var focusedHabitID: UUID?
 
     var body: some View {
@@ -101,6 +102,8 @@ struct ContentView: View {
     }
 
     private func toggleHabit(_ entry: HabitPageEntry) {
+        completionHaptics.triggerGestureFeedback()
+
         let currentProgress = progress(for: entry)
         let targetProgress: CGFloat = currentProgress >= 0.5 ? 0 : 1
         completionProgressOverrides[entry.habit.id] = currentProgress
@@ -116,6 +119,9 @@ struct ContentView: View {
         do {
             let service = HabitService(modelContext: modelContext)
             try service.toggleCompletion(for: entry.habit)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                completionHaptics.triggerSettledFeedback()
+            }
             refreshPages(selectionMode: .specificHabit(entry.habit.id))
         } catch {
             refreshPages(selectionMode: .specificHabit(entry.habit.id))

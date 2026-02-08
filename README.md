@@ -47,6 +47,13 @@ Each row is a day, and the filled portion shows completion percentage:
 2. Choose an iOS Simulator or connected device.
 3. Press Run (`Cmd+R`).
 
+## Quality checks
+
+- `make lint` runs SwiftLint.
+- `make lint-format` runs SwiftFormat in lint mode.
+- `make format` applies SwiftFormat fixes.
+- `make test` runs the test suite with `xcodebuild`.
+
 ## Tech stack
 
 - Swift

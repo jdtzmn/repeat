@@ -1,0 +1,21 @@
+name: Swift Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint Swift Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        uses: irgaly/setup-mint@v1
+
+      - name: Lint Swift code with SwiftLint
+        run: make lint
+
+      - name: Lint Swift code with SwiftFormat
+        run: make lint-format

@@ -92,10 +92,71 @@ struct RepeatTests {
         #expect(emptyService.initialPageIndex(for: emptyPages) == 0)
     }
 
+    @Test func historySummaryTracksTogglesAndArchivedHabits() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let service = HabitService(modelContext: context)
+        let today = DayService.todayStart(now: Date(timeIntervalSince1970: 1_738_937_221))
+
+        let activeHabit = Habit(name: "Active", sortOrder: 0, createdAt: DayService.addingDays(-3, to: today))
+        let archivedHabit = Habit(name: "Archived", sortOrder: 1, createdAt: DayService.addingDays(-3, to: today))
+        context.insert(activeHabit)
+        context.insert(archivedHabit)
+
+        try service.toggleCompletion(for: activeHabit, dayStart: today)
+        try service.toggleCompletion(for: archivedHabit, dayStart: today)
+        try service.archiveHabit(archivedHabit)
+
+        let historyService = HistorySummaryService(modelContext: context)
+        try historyService.ensureSummariesUpToDate(todayStart: today, now: today)
+
+        let summary = try fetchSummary(for: today, context: context)
+        #expect(summary?.eligibleHabitCount == 2)
+        #expect(summary?.completedHabitCount == 2)
+
+        let tomorrow = DayService.addingDays(1, to: today)
+        try historyService.refreshSummary(for: tomorrow, now: tomorrow)
+        let tomorrowSummary = try fetchSummary(for: tomorrow, context: context)
+        #expect(tomorrowSummary?.eligibleHabitCount == 1)
+    }
+
+    @Test func historySummaryBackfillsFromFirstCompletionAndIncludesEmptyDays() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let service = HabitService(modelContext: context)
+        let today = DayService.todayStart(now: Date(timeIntervalSince1970: 1_738_937_221))
+        let firstDay = DayService.addingDays(-2, to: today)
+
+        let habit = Habit(name: "Daily", sortOrder: 0, createdAt: firstDay)
+        context.insert(habit)
+
+        try service.toggleCompletion(for: habit, dayStart: firstDay)
+
+        let historyService = HistorySummaryService(modelContext: context)
+        try historyService.ensureSummariesUpToDate(todayStart: today, now: today)
+
+        let summaries = try context.fetch(FetchDescriptor<DaySummary>())
+        let dayStarts = Set(summaries.map(\.dayStart))
+
+        #expect(dayStarts.contains(firstDay))
+        #expect(dayStarts.contains(DayService.addingDays(-1, to: today)))
+        #expect(dayStarts.contains(today))
+    }
+
+    private func fetchSummary(for dayStart: Date, context: ModelContext) throws -> DaySummary? {
+        let descriptor = FetchDescriptor<DaySummary>(
+            predicate: #Predicate { summary in
+                summary.dayStart == dayStart
+            }
+        )
+        return try context.fetch(descriptor).first
+    }
+
     private func makeInMemoryContainer() throws -> ModelContainer {
         let schema = Schema([
             Habit.self,
             HabitCompletion.self,
+            DaySummary.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [configuration])

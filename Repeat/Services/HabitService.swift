@@ -18,6 +18,10 @@ struct HabitService {
         let habit = try Habit(name: name, emoji: Habit.normalizedEmoji(emoji), sortOrder: nextSortOrder())
         modelContext.insert(habit)
         try modelContext.save()
+        let historyService = HistorySummaryService(modelContext: modelContext)
+        try historyService
+            .refreshSummaries(from: DayService.startOfDay(for: habit.createdAt), through: DayService.todayStart())
+        try historyService.ensureSummariesUpToDate()
         return habit
     }
 
@@ -45,14 +49,22 @@ struct HabitService {
 
     @discardableResult
     func toggleCompletion(for habit: Habit, dayStart: Date = DayService.todayStart()) throws -> Bool {
-        if let existing = try completion(for: habit.id, dayStart: dayStart) {
+        let normalizedDay = DayService.startOfDay(for: dayStart)
+
+        if let existing = try completion(for: habit.id, dayStart: normalizedDay) {
             modelContext.delete(existing)
             try modelContext.save()
+            let historyService = HistorySummaryService(modelContext: modelContext)
+            try historyService.refreshSummary(for: normalizedDay)
+            try historyService.ensureSummariesUpToDate()
             return false
         }
 
-        modelContext.insert(HabitCompletion(habitID: habit.id, dayStart: dayStart))
+        modelContext.insert(HabitCompletion(habitID: habit.id, dayStart: normalizedDay))
         try modelContext.save()
+        let historyService = HistorySummaryService(modelContext: modelContext)
+        try historyService.refreshSummary(for: normalizedDay)
+        try historyService.ensureSummariesUpToDate()
         return true
     }
 
@@ -94,8 +106,14 @@ struct HabitService {
     }
 
     func archiveHabit(_ habit: Habit) throws {
+        let archivedAt = Date()
         habit.isArchived = true
+        habit.archivedAt = archivedAt
         try modelContext.save()
+        let historyService = HistorySummaryService(modelContext: modelContext)
+        try historyService
+            .refreshSummaries(from: DayService.startOfDay(for: archivedAt), through: DayService.todayStart())
+        try historyService.ensureSummariesUpToDate()
     }
 
     func reorderHabits(orderedIDs: [UUID]) throws {

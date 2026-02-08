@@ -11,6 +11,7 @@ final class Habit {
     var sortOrder: Int
     var createdAt: Date
     var isArchived: Bool
+    var archivedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -18,7 +19,8 @@ final class Habit {
         emoji: String = Habit.defaultEmoji,
         sortOrder: Int,
         createdAt: Date = Date(),
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -26,6 +28,7 @@ final class Habit {
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.isArchived = isArchived
+        self.archivedAt = archivedAt
     }
 
     static func normalizedEmoji(_ value: String) -> String {

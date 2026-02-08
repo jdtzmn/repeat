@@ -14,6 +14,7 @@ struct RepeatApp: App {
         let schema = Schema([
             Habit.self,
             HabitCompletion.self,
+            DaySummary.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

@@ -26,13 +26,13 @@ struct HistoryView: View {
             : 0
 
         return Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color(.systemBackground))
             .overlay(alignment: .leading) {
                 Rectangle()
                     .fill(Color.accentColor)
                     .frame(maxWidth: .infinity)
                     .scaleEffect(x: max(0.001, ratio), y: 1, anchor: .leading)
             }
-            .frame(height: 14)
+            .frame(height: 28)
     }
 }

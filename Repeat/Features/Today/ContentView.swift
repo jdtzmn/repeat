@@ -46,21 +46,23 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let pageHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+            let windowInsets = windowSafeAreaInsets
+            let topInset = windowInsets.top
+            let bottomInset = windowInsets.bottom
+            let pageHeight = geometry.size.height
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
-                    managePage(geometry: geometry, pageHeight: pageHeight)
+                    managePage(geometry: geometry, pageHeight: pageHeight, topInset: topInset)
                         .id(VerticalPage.manage)
 
                     todayPage(geometry: geometry, pageHeight: pageHeight)
                         .id(VerticalPage.today)
 
-                    historyPage(geometry: geometry, pageHeight: pageHeight)
+                    historyPage(geometry: geometry, pageHeight: pageHeight, topInset: topInset)
                         .id(VerticalPage.history)
                 }
                 .scrollTargetLayout()
             }
-            .background(Color(.systemBackground))
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $verticalPage)
             .defaultScrollAnchor(.top)
@@ -120,11 +122,17 @@ struct ContentView: View {
         .enableInjection()
     }
 
-    private func managePage(geometry: GeometryProxy, pageHeight: CGFloat) -> some View {
+    private var windowSafeAreaInsets: UIEdgeInsets {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+            .keyWindow?.safeAreaInsets ?? .zero
+    }
+
+    private func managePage(geometry: GeometryProxy, pageHeight: CGFloat, topInset: CGFloat) -> some View {
         ZStack {
             Color(.systemBackground)
 
             ManageHabitsPage()
+                .padding(.top, topInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .frame(width: geometry.size.width, height: pageHeight)
@@ -153,12 +161,13 @@ struct ContentView: View {
         .clipped()
     }
 
-    private func historyPage(geometry: GeometryProxy, pageHeight: CGFloat) -> some View {
+    private func historyPage(geometry: GeometryProxy, pageHeight: CGFloat, topInset: CGFloat) -> some View {
         ZStack {
             Color(.systemBackground)
 
             ScrollView(.vertical, showsIndicators: false) {
                 HistoryView()
+                    .padding(.top, topInset)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }

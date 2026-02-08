@@ -106,7 +106,6 @@ private struct AnimatedStrikethroughTextField: View {
         let blendedValue = startValue + (1 - startValue) * clampedProgress
         return Color(red: blendedValue, green: blendedValue, blue: blendedValue)
     }
-
 }
 
 private struct CompletionPageBackground: View {

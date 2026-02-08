@@ -34,5 +34,5 @@ struct HistoryView: View {
                     .scaleEffect(x: max(0.001, ratio), y: 1, anchor: .leading)
             }
             .frame(height: 14)
-        }
+    }
 }

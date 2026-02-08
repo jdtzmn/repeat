@@ -61,7 +61,7 @@ struct HabitPageView: View {
         .emojiPicker(
             isPresented: $isEmojiPickerPresented,
             selectedEmoji: $selectedEmoji,
-            configuration: ElegantConfiguration(showReset: false)
+            configuration: ElegantConfiguration(showSearch: true, showRandom: false, showReset: false)
         )
         .onChange(of: selectedEmoji) { _, newValue in
             guard let emojiValue = newValue?.emoji else {
